@@ -38,6 +38,7 @@ export interface GameData {
   roundScores: number[] // Local player's round scores
   gems: number // Local player's gem count (max 10)
   localPlayerId: string // ID of the local player
+  roomCode: string | null // WebRTC room code for multiplayer
 }
 
 export type WebRTCMessage =

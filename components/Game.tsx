@@ -4,12 +4,14 @@ import { useActor } from '@xstate/react'
 
 import Tile from '@/components/Tile'
 import { GameStateMachineContext } from '@/stores/gameStateMachine'
+import { useWebRTC } from '@/utils/useWebRTC'
 
 import styles from './Game.module.scss'
 
 const Game: FC = () => {
   const actor = useContext(GameStateMachineContext)
   const [state] = useActor(actor)
+  const { roomCode, connectionStatus, error } = useWebRTC(actor)
 
   // Timer tick every second
   useEffect(() => {
@@ -92,9 +94,18 @@ const Game: FC = () => {
           <div style={{ marginTop: '24px', padding: '24px', border: '2px solid #000', borderRadius: '8px' }}>
             <h2 style={{ fontSize: '48px', margin: '0' }}>ROOM CODE</h2>
             <div style={{ fontSize: '64px', fontWeight: 'bold', letterSpacing: '8px' }}>
-              {/* Placeholder - will be filled by WebRTC manager */}
-              XXXXX
+              {roomCode ?? 'LOADING...'}
             </div>
+            {connectionStatus === 'connecting' && (
+              <div style={{ fontSize: '16px', color: '#666', marginTop: '8px' }}>
+                Connecting...
+              </div>
+            )}
+            {connectionStatus === 'error' && error != null && (
+              <div style={{ fontSize: '16px', color: 'red', marginTop: '8px' }}>
+                Error: {error}
+              </div>
+            )}
           </div>
 
           <div style={{ marginTop: '24px' }}>
@@ -206,6 +217,13 @@ const Game: FC = () => {
           }}>
             {formatTime(context.turnTimeRemaining)}
           </div>
+          {context.players.length > 1 && (
+            <div style={{ fontSize: '18px', marginTop: '8px' }}>
+              {context.players[context.currentPlayerIndex]?.id === context.localPlayerId
+                ? "Your Turn"
+                : `${context.players[context.currentPlayerIndex]?.name}'s Turn`}
+            </div>
+          )}
         </div>
       )}
       <div>

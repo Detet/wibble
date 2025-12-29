@@ -172,7 +172,8 @@ export const gameStateMachine = createMachine(
       gems: 0,
       board: [],
       players: [],
-      localPlayerId: ''
+      localPlayerId: '',
+      roomCode: null
     },
     /* eslint-disable @typescript-eslint/consistent-type-assertions */
     schema: {
@@ -215,8 +216,21 @@ export const gameStateMachine = createMachine(
           isReady: true
         }]
       }),
-      setupGuest: assign({
-        localPlayerId: (_, event: { type: 'JOIN_GAME', roomCode: string, playerName: string }) => `guest-${Date.now()}`
+      setupGuest: assign((context, event: { type: 'JOIN_GAME', roomCode: string, playerName: string }) => {
+        const guestId = `guest-${Date.now()}`
+        return {
+          localPlayerId: guestId,
+          roomCode: event.roomCode,
+          players: [{
+            id: guestId,
+            name: event.playerName,
+            gems: 0,
+            totalScore: 0,
+            roundScores: [],
+            isHost: false,
+            isReady: false
+          }]
+        }
       }),
       initializePlayers: assign({
         players: (_, event: { type: 'LOBBY_JOINED', players: any[] }) => event.players
