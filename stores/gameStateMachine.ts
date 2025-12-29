@@ -1,7 +1,7 @@
 import { createContext } from 'react'
 import { createMachine, assign, ActorRefFrom } from 'xstate'
 
-import { generateTitleBoard, generateRandomBoard, randomLetter } from '@/utils/board'
+import { generateTitleBoard, generateRandomBoard, randomLetter, tiles } from '@/utils/board'
 import { isValidWord } from '@/utils/dictionary'
 import { GameData, TileData } from '@/types'
 
@@ -30,6 +30,14 @@ export const gameStateMachine = createMachine(
               ADD_LETTER: {
                 target: 'chaining',
                 actions: addLetterActions
+              },
+              USE_SHUFFLE: {
+                cond: 'hasEnoughGemsForShuffle',
+                actions: ['shuffleBoard', 'spendGemsForShuffle']
+              },
+              USE_WILDCARD: {
+                cond: 'hasEnoughGemsForWildcard',
+                actions: ['setWildcardLetter', 'spendGemsForWildcard']
               }
             }
           },
@@ -79,6 +87,8 @@ export const gameStateMachine = createMachine(
         | { type: 'ADD_LETTER', location: [number, number] }
         | { type: 'REMOVE_LETTER' }
         | { type: 'STOP_CHAINING' }
+        | { type: 'USE_SHUFFLE' }
+        | { type: 'USE_WILDCARD', location: [number, number], letter: string }
     }
     /* eslint-enable @typescript-eslint/consistent-type-assertions */
   },
@@ -175,6 +185,61 @@ export const gameStateMachine = createMachine(
         currentChain: [],
         currentWord: '',
         currentScore: 0
+      }),
+      shuffleBoard: assign({
+        board: (context) => {
+          // Collect all letters from the board
+          const letters: TileData[] = []
+          for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 5; c++) {
+              letters.push(context.board[r][c])
+            }
+          }
+
+          // Fisher-Yates shuffle
+          for (let i = letters.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [letters[i], letters[j]] = [letters[j], letters[i]]
+          }
+
+          // Rebuild the board with shuffled letters
+          const newBoard: TileData[][] = []
+          let index = 0
+          for (let r = 0; r < 5; r++) {
+            newBoard[r] = []
+            for (let c = 0; c < 5; c++) {
+              newBoard[r][c] = letters[index++]
+            }
+          }
+
+          return newBoard
+        }
+      }),
+      spendGemsForShuffle: assign({
+        gems: (context) => context.gems - 1
+      }),
+      setWildcardLetter: assign({
+        board: (context, event: { type: 'USE_WILDCARD', location: [number, number], letter: string }) => {
+          const [col, row] = event.location
+          const newBoard = context.board.map(r => [...r])
+          const tile = newBoard[row][col]
+
+          // Find the score for the new letter
+          const newTile = tiles.find(t => t.letter === event.letter.toUpperCase())
+
+          if (newTile !== undefined) {
+            newBoard[row][col] = {
+              ...tile,
+              letter: newTile.letter,
+              score: newTile.score
+            }
+          }
+
+          return newBoard
+        }
+      }),
+      spendGemsForWildcard: assign({
+        gems: (context) => context.gems - 3
       })
     },
     guards: {
@@ -199,6 +264,12 @@ export const gameStateMachine = createMachine(
         }
 
         return true
+      },
+      hasEnoughGemsForShuffle: (context) => {
+        return context.gems >= 1
+      },
+      hasEnoughGemsForWildcard: (context) => {
+        return context.gems >= 3
       }
     }
   }

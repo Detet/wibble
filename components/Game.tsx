@@ -75,6 +75,27 @@ const Game: FC = () => {
             <div>
               <div>SCORE: {state.context.totalScore}</div>
               <div>GEMS: {state.context.gems} / 10</div>
+              <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => actor.send('USE_SHUFFLE')}
+                  disabled={state.context.gems < 1}
+                >
+                  Shuffle (1 💎)
+                </button>
+                <button
+                  onClick={() => {
+                    const letter = prompt('Enter letter (A-Z):')
+                    if (letter && letter.length === 1) {
+                      const col = parseInt(prompt('Enter column (0-4):') || '0')
+                      const row = parseInt(prompt('Enter row (0-4):') || '0')
+                      actor.send({ type: 'USE_WILDCARD', location: [col, row], letter })
+                    }
+                  }}
+                  disabled={state.context.gems < 3}
+                >
+                  Wildcard (3 💎)
+                </button>
+              </div>
             </div>
             )
       }
