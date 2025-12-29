@@ -4,18 +4,35 @@
 
 ### Competitive Multiplayer Format
 - **Game**: Consists of multiple rounds (5, 10, 15, etc. - selectable)
-- **Round**: 1 minute timer (adjustable: 30s, 1m, 2m, 3m)
-- **Gameplay**: All players see identical board, compete simultaneously
+- **Gameplay**: Turn-based with shared board state
+- **Shared Board**: All players interact with the same evolving 5x5 board
+- **Tile Replacement**: When a player uses tiles, they're replaced with new random letters
+- **Turn Timer**: 1 minute per turn (adjustable: 30s, 1m, 2m, 3m)
 - **Scoring**: Points accumulate across all rounds
 - **Winner**: Highest total score after all rounds
 
-### Round Flow
-1. Round starts with 5x5 board (same for all players)
-2. Timer counts down (1 minute default)
-3. Players form words, earn points/gems
-4. Timer expires → Round ends
-5. Scores displayed, next round begins with new board
-6. After final round → Winner declared
+### Round Flow (Turn-Based)
+1. Round starts with fresh 5x5 board (shared by all players)
+2. **Player 1's Turn**:
+   - Timer starts (1 minute default)
+   - Player forms word by chaining tiles
+   - Submits word → scores points/gems
+   - Used tiles are removed and replaced with new random letters
+   - Turn ends
+3. **Player 2's Turn**:
+   - Sees updated board (with Player 1's tiles replaced)
+   - Forms word, submits, tiles replaced
+   - Turn ends
+4. Repeat for all players
+5. After each player has taken X turns → Round ends
+6. New round starts with fresh board
+7. After final round → Winner declared
+
+### Key Mechanics
+- **Shared Board**: Board state is synchronized across all players
+- **Evolving Board**: Board changes as tiles get used and replaced
+- **Turn Order**: Players take turns sequentially (Player 1 → Player 2 → Player 3 → back to Player 1)
+- **Spectating**: Players can watch opponent's turns in real-time
 
 ---
 
@@ -68,28 +85,34 @@
 
 ### 1.5 Power-Ups
 **Priority: MEDIUM**
-- [ ] **Shuffle** (1 gem): Shuffle all tiles on board
-- [ ] **Wildcard** (3 gems): Click tile → choose any letter
+- [ ] **Shuffle** (1 gem): Rearrange existing letters on board (same letters, different positions)
+  - Does NOT generate new letters
+  - Randomizes the positions of all current letters
+- [ ] **Wildcard** (3 gems): Click tile → choose any letter to replace it
 - [ ] Add power-up buttons to UI
 - [ ] Disable buttons when insufficient gems
 - [ ] Update state machine with power-up actions
 
-### 1.6 Round Timer System
+### 1.6 Turn Timer System
 **Priority: HIGH**
-- [ ] Add round timer to game state
+- [ ] Add turn timer to game state
 - [ ] Countdown display (1:00, 0:59, 0:58...)
-- [ ] Auto-end round when timer reaches 0:00
+- [ ] Auto-end turn when timer reaches 0:00
 - [ ] Configurable timer duration (30s, 1m, 2m, 3m)
+- [ ] Skip turn if timer expires (no points awarded)
 
-### 1.7 Multi-Round Structure
+### 1.7 Multi-Round & Turn Structure
 **Priority: HIGH**
 - [ ] Add game configuration:
   - `totalRounds: number` (5, 10, 15, etc.)
-  - `roundDuration: number` (30, 60, 120, 180 seconds)
+  - `turnsPerPlayer: number` (how many turns each player gets per round)
+  - `turnDuration: number` (30, 60, 120, 180 seconds)
 - [ ] Track current round number
-- [ ] Generate new board each round
+- [ ] Track current player turn
+- [ ] Generate new board each round (not each turn)
 - [ ] Accumulate scores across rounds
 - [ ] Display round-by-round scores
+- [ ] End round after all players complete their turns
 - [ ] End game after final round
 - [ ] Show final results/winner screen
 
@@ -122,15 +145,20 @@
 
 ### 2.3 Game State Synchronization
 **Priority: CRITICAL**
-- [ ] Host is authoritative (generates boards, controls timer)
+- [ ] Host is authoritative (generates boards, controls turns, validates moves)
 - [ ] Broadcast game state to all peers:
-  - Current board
+  - Current board (shared, evolving)
+  - Current turn (which player is active)
   - Round number
-  - Timer remaining
+  - Turn timer remaining
   - All player scores
-- [ ] Each player submits words to host
-- [ ] Host validates and broadcasts score updates
-- [ ] Handle player disconnections gracefully
+- [ ] Turn management:
+  - Only active player can make moves
+  - Other players spectate in real-time
+  - After word submission, turn passes to next player
+  - Host replaces used tiles and broadcasts new board state
+- [ ] Host validates words and broadcasts score updates
+- [ ] Handle player disconnections gracefully (skip their turn)
 
 ### 2.4 Lobby System
 **Priority: HIGH**
@@ -144,8 +172,10 @@
 
 ### 2.5 Real-Time Updates
 **Priority: MEDIUM**
-- [ ] Live opponent score updates during round
-- [ ] Player word submissions visible to others (optional)
+- [ ] Turn indicator showing whose turn it is
+- [ ] Live spectating - watch current player's moves in real-time
+- [ ] Word submission animations (tiles disappearing, new tiles appearing)
+- [ ] Score updates after each turn
 - [ ] Round transition animations
 - [ ] Final scoreboard
 
@@ -211,9 +241,11 @@ gameStateMachine
 ├── game
 │   ├── roundStarting
 │   ├── roundActive
-│   │   ├── idle
-│   │   ├── chaining
-│   │   └── wordSubmitted
+│   │   ├── myTurn (active player)
+│   │   │   ├── idle
+│   │   │   ├── chaining
+│   │   │   └── wordSubmitted
+│   │   └── opponentTurn (spectating)
 │   ├── roundEnding
 │   └── gameOver
 └── disconnected
@@ -234,26 +266,29 @@ interface TileData {
 
 interface GameConfig {
   totalRounds: number
-  roundDuration: number // seconds
+  turnsPerPlayer: number // how many turns each player gets per round
+  turnDuration: number // seconds per turn
 }
 
 interface GameState {
   config: GameConfig
   currentRound: number
-  timeRemaining: number
-  board: TileData[][]
+  currentPlayerIndex: number // which player's turn it is
+  turnTimeRemaining: number
+  board: TileData[][] // shared board, evolves as tiles get replaced
   players: PlayerData[]
-  gems: number // local player gems
-  currentChain: [number, number][]
-  currentWord: string
-  currentScore: number
+  currentChain: [number, number][] // active player's current chain
+  currentWord: string // active player's current word
+  currentScore: number // active player's current score
 }
 
 interface PlayerData {
   id: string
   name: string
+  gems: number // each player has their own gem count
   totalScore: number
   roundScores: number[]
+  turnsCompleted: number // in current round
   isHost: boolean
   isReady: boolean
 }
@@ -272,8 +307,12 @@ type Message =
   | { type: 'PLAYER_LEFT', playerId: string }
   | { type: 'GAME_CONFIG', config: GameConfig }
   | { type: 'ROUND_START', round: number, board: TileData[][] }
+  | { type: 'TURN_START', playerId: string, playerIndex: number }
   | { type: 'TIMER_UPDATE', timeRemaining: number }
-  | { type: 'WORD_SUBMITTED', playerId: string, word: string, score: number }
+  | { type: 'BOARD_UPDATE', board: TileData[][] } // after tiles replaced
+  | { type: 'WORD_SUBMITTED', playerId: string, word: string, score: number, gemsEarned: number }
+  | { type: 'TURN_END', playerId: string, newBoard: TileData[][] }
+  | { type: 'POWER_UP_USED', playerId: string, powerUp: 'shuffle' | 'wildcard', newBoard: TileData[][] }
   | { type: 'ROUND_END', scores: Record<string, number> }
   | { type: 'GAME_END', finalScores: Record<string, number> }
 ```
@@ -334,9 +373,21 @@ type Message =
 
 ## Notes
 
+### Core Mechanics
+- **Turn-based gameplay**: Players take sequential turns, not simultaneous
+- **Shared board**: All players interact with the same board; it evolves as tiles get used
+- **Tile replacement**: After a word is submitted, used tiles are replaced with new random letters
+- **Shuffle behavior**: Rearranges existing letters on the board (does NOT generate new letters)
+- **Gems per player**: Each player has their own gem count (max 10)
+
+### Technical
 - Use Google STUN servers for NAT traversal: `stun:stun.l.google.com:19302`
 - Consider adding TURN server for users behind strict firewalls
 - Word list: Use OSPD (Official Scrabble Players Dictionary) or TWL (Tournament Word List)
+
+### Visual Design
 - Gem tiles should be visually distinct (sparkle animation?)
 - Frozen tiles should pulse or have ice overlay
-- Consider adding sound effects (tile click, word submit, gem collect, round end)
+- Turn indicator should be prominent (highlight active player)
+- Show "Waiting for [PlayerName]..." during opponent turns
+- Consider adding sound effects (tile click, word submit, gem collect, turn change, round end)
