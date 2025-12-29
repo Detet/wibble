@@ -13,8 +13,60 @@ const addLetterActions = [
 export const gameStateMachine = createMachine(
   {
     id: 'gameStateMachine',
-    initial: 'title',
+    initial: 'mainMenu',
     states: {
+      mainMenu: {
+        on: {
+          HOST_GAME: 'hostLobby',
+          JOIN_GAME: 'joinLobby',
+          PLAY_SOLO: 'title'
+        }
+      },
+      hostLobby: {
+        entry: 'setupHost',
+        on: {
+          PLAYER_JOINED: {
+            actions: 'addPlayer'
+          },
+          PLAYER_LEFT: {
+            actions: 'removePlayer'
+          },
+          PLAYER_READY_TOGGLE: {
+            actions: 'togglePlayerReady'
+          },
+          START_MULTIPLAYER: {
+            target: 'play',
+            cond: 'allPlayersReady'
+          },
+          LEAVE_LOBBY: 'mainMenu'
+        }
+      },
+      joinLobby: {
+        entry: 'setupGuest',
+        on: {
+          LOBBY_JOINED: {
+            target: 'waitingRoom',
+            actions: 'initializePlayers'
+          },
+          JOIN_FAILED: 'mainMenu',
+          LEAVE_LOBBY: 'mainMenu'
+        }
+      },
+      waitingRoom: {
+        on: {
+          PLAYER_JOINED: {
+            actions: 'addPlayer'
+          },
+          PLAYER_LEFT: {
+            actions: 'removePlayer'
+          },
+          PLAYER_READY_TOGGLE: {
+            actions: 'togglePlayerReady'
+          },
+          GAME_STARTING: 'play',
+          LEAVE_LOBBY: 'mainMenu'
+        }
+      },
       title: {
         entry: 'setupTitle',
         on: {
@@ -126,6 +178,17 @@ export const gameStateMachine = createMachine(
     schema: {
       context: {} as GameData,
       events: {} as
+        | { type: 'HOST_GAME', playerName: string }
+        | { type: 'JOIN_GAME', roomCode: string, playerName: string }
+        | { type: 'PLAY_SOLO' }
+        | { type: 'LOBBY_JOINED', players: any[] }
+        | { type: 'JOIN_FAILED' }
+        | { type: 'PLAYER_JOINED', player: any }
+        | { type: 'PLAYER_LEFT', playerId: string }
+        | { type: 'PLAYER_READY_TOGGLE', playerId: string }
+        | { type: 'START_MULTIPLAYER' }
+        | { type: 'GAME_STARTING' }
+        | { type: 'LEAVE_LOBBY' }
         | { type: 'START_GAME' }
         | { type: 'ADD_LETTER', location: [number, number] }
         | { type: 'REMOVE_LETTER' }
@@ -140,6 +203,42 @@ export const gameStateMachine = createMachine(
   },
   {
     actions: {
+      setupHost: assign({
+        localPlayerId: (_, event: { type: 'HOST_GAME', playerName: string }) => `host-${Date.now()}`,
+        players: (_, event: { type: 'HOST_GAME', playerName: string }) => [{
+          id: `host-${Date.now()}`,
+          name: event.playerName,
+          gems: 0,
+          totalScore: 0,
+          roundScores: [],
+          isHost: true,
+          isReady: true
+        }]
+      }),
+      setupGuest: assign({
+        localPlayerId: (_, event: { type: 'JOIN_GAME', roomCode: string, playerName: string }) => `guest-${Date.now()}`
+      }),
+      initializePlayers: assign({
+        players: (_, event: { type: 'LOBBY_JOINED', players: any[] }) => event.players
+      }),
+      addPlayer: assign({
+        players: (context, event: { type: 'PLAYER_JOINED', player: any }) => [
+          ...context.players,
+          event.player
+        ]
+      }),
+      removePlayer: assign({
+        players: (context, event: { type: 'PLAYER_LEFT', playerId: string }) =>
+          context.players.filter(p => p.id !== event.playerId)
+      }),
+      togglePlayerReady: assign({
+        players: (context, event: { type: 'PLAYER_READY_TOGGLE', playerId: string }) =>
+          context.players.map(p =>
+            p.id === event.playerId
+              ? { ...p, isReady: !p.isReady }
+              : p
+          )
+      }),
       setupTitle: assign({
         currentWord: (_) => '',
         board: (_) => generateTitleBoard()
@@ -342,6 +441,9 @@ export const gameStateMachine = createMachine(
       },
       isGameOver: (context) => {
         return context.currentRound >= context.config.totalRounds
+      },
+      allPlayersReady: (context) => {
+        return context.players.length >= 2 && context.players.every(p => p.isReady)
       }
     }
   }

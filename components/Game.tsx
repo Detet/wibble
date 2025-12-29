@@ -37,13 +37,163 @@ const Game: FC = () => {
   }
 
   const { context } = state
+  const isMainMenu = state.matches('mainMenu')
+  const isHostLobby = state.matches('hostLobby')
+  const isJoinLobby = state.matches('joinLobby')
+  const isWaitingRoom = state.matches('waitingRoom')
   const isPlaying = state.matches('play')
   const isRoundEnding = state.matches('play.roundEnding')
   const isGameOver = state.matches('gameOver')
   const isTitle = state.matches('title')
 
+  const localPlayer = context.players.find(p => p.id === context.localPlayerId)
+  const isHost = localPlayer?.isHost === true
+
   return (
     <main className={styles.container}>
+      {isMainMenu && (
+        <div style={{ padding: '32px', maxWidth: '600px', margin: '0 auto' }}>
+          <h1>Wibble - Multiplayer Word Game</h1>
+          <div style={{ marginTop: '32px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <button
+              style={{ padding: '16px 32px', fontSize: '18px' }}
+              onClick={() => {
+                const name = prompt('Enter your name:') || 'Player'
+                actor.send({ type: 'HOST_GAME', playerName: name })
+              }}
+            >
+              Host Game
+            </button>
+            <button
+              style={{ padding: '16px 32px', fontSize: '18px' }}
+              onClick={() => {
+                const name = prompt('Enter your name:') || 'Player'
+                const code = prompt('Enter room code:')
+                if (code != null) {
+                  actor.send({ type: 'JOIN_GAME', roomCode: code.toUpperCase(), playerName: name })
+                }
+              }}
+            >
+              Join Game
+            </button>
+            <button
+              style={{ padding: '16px 32px', fontSize: '18px' }}
+              onClick={() => actor.send('PLAY_SOLO')}
+            >
+              Play Solo
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isHostLobby && (
+        <div style={{ padding: '32px', maxWidth: '600px', margin: '0 auto' }}>
+          <h1>Host Lobby</h1>
+          <div style={{ marginTop: '24px', padding: '24px', border: '2px solid #000', borderRadius: '8px' }}>
+            <h2 style={{ fontSize: '48px', margin: '0' }}>ROOM CODE</h2>
+            <div style={{ fontSize: '64px', fontWeight: 'bold', letterSpacing: '8px' }}>
+              {/* Placeholder - will be filled by WebRTC manager */}
+              XXXXX
+            </div>
+          </div>
+
+          <div style={{ marginTop: '24px' }}>
+            <h3>Players ({context.players.length})</h3>
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              {context.players.map(player => (
+                <li key={player.id} style={{
+                  padding: '12px',
+                  marginBottom: '8px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <span>
+                    {player.name} {player.isHost && '(Host)'}
+                  </span>
+                  <span style={{
+                    color: player.isReady ? 'green' : 'red',
+                    fontWeight: 'bold'
+                  }}>
+                    {player.isReady ? '✓ Ready' : '✗ Not Ready'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div style={{ marginTop: '24px', display: 'flex', gap: '16px' }}>
+            <button
+              style={{ flex: 1, padding: '16px', fontSize: '18px' }}
+              onClick={() => actor.send('START_MULTIPLAYER')}
+              disabled={context.players.length < 2 || !context.players.every(p => p.isReady)}
+            >
+              Start Game
+            </button>
+            <button
+              style={{ padding: '16px 32px', fontSize: '18px' }}
+              onClick={() => actor.send('LEAVE_LOBBY')}
+            >
+              Leave
+            </button>
+          </div>
+        </div>
+      )}
+
+      {(isJoinLobby || isWaitingRoom) && (
+        <div style={{ padding: '32px', maxWidth: '600px', margin: '0 auto' }}>
+          <h1>{isJoinLobby ? 'Joining...' : 'Waiting Room'}</h1>
+
+          {isWaitingRoom && (
+            <>
+              <div style={{ marginTop: '24px' }}>
+                <h3>Players ({context.players.length})</h3>
+                <ul style={{ listStyle: 'none', padding: 0 }}>
+                  {context.players.map(player => (
+                    <li key={player.id} style={{
+                      padding: '12px',
+                      marginBottom: '8px',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <span>
+                        {player.name} {player.isHost && '(Host)'}
+                      </span>
+                      <span style={{
+                        color: player.isReady ? 'green' : 'red',
+                        fontWeight: 'bold'
+                      }}>
+                        {player.isReady ? '✓ Ready' : '✗ Not Ready'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div style={{ marginTop: '24px', display: 'flex', gap: '16px' }}>
+                <button
+                  style={{ flex: 1, padding: '16px', fontSize: '18px' }}
+                  onClick={() => actor.send({ type: 'PLAYER_READY_TOGGLE', playerId: context.localPlayerId })}
+                >
+                  {localPlayer?.isReady ? 'Not Ready' : 'Ready'}
+                </button>
+                <button
+                  style={{ padding: '16px 32px', fontSize: '18px' }}
+                  onClick={() => actor.send('LEAVE_LOBBY')}
+                >
+                  Leave
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {isPlaying && !isRoundEnding && (
         <div style={{ marginBottom: '16px' }}>
           <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
