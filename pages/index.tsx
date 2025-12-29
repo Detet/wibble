@@ -1,17 +1,59 @@
-import { FC } from 'react'
-import { useInterpret } from '@xstate/react'
+import type { NextPage } from 'next'
+import { useState } from 'react'
+import Login from '../components/Login'
+import Lobby from '../components/Lobby'
+import Room from '../components/Room'
+import MultiplayerGame from '../components/MultiplayerGame'
 
-import Game from '@/components/Game'
-import { gameStateMachine, GameStateMachineContext } from '@/stores/gameStateMachine'
+type View = 'login' | 'lobby' | 'room' | 'game'
 
-const App: FC = () => {
-  const actor = useInterpret(gameStateMachine)
+const Home: NextPage = () => {
+  const [view, setView] = useState<View>('login')
+  const [playerName, setPlayerName] = useState('')
+  const [roomId, setRoomId] = useState('')
+
+  const handleLogin = (name: string) => {
+    setPlayerName(name)
+    setView('lobby')
+  }
+
+  const handleEnterRoom = (id: string) => {
+    setRoomId(id)
+    setView('room')
+  }
+
+  const handleLeaveRoom = () => {
+    setRoomId('')
+    setView('lobby')
+  }
+
+  const handleGameStart = () => {
+    setView('game')
+  }
+
+  const handleGameEnd = () => {
+    setView('room')
+  }
 
   return (
-    <GameStateMachineContext.Provider value={actor}>
-      <Game />
-    </GameStateMachineContext.Provider>
+    <>
+      {view === 'login' && <Login onLogin={handleLogin} />}
+      {view === 'lobby' && (
+        <Lobby playerName={playerName} onEnterRoom={handleEnterRoom} />
+      )}
+      {view === 'room' && (
+        <Room
+          roomId={roomId}
+          playerName={playerName}
+          onGameStart={handleGameStart}
+          onLeave={handleLeaveRoom}
+        />
+      )}
+      {view === 'game' && (
+        <MultiplayerGame roomId={roomId} onGameEnd={handleGameEnd} />
+      )}
+    </>
   )
 }
 
-export default App
+export default Home
