@@ -10,7 +10,16 @@ interface TypeProps extends TileData {
   location: [number, number]
 }
 
-const Tile: FC<TypeProps> = ({ letter, score, location }) => {
+const Tile: FC<TypeProps> = ({
+  letter,
+  score,
+  location,
+  doubleLetterMultiplier,
+  tripleLetterMultiplier,
+  doubleWordMultiplier,
+  hasGem,
+  isFrozen
+}) => {
   const actor = useContext(GameStateMachineContext)
   const {
     isChaining,
@@ -23,18 +32,36 @@ const Tile: FC<TypeProps> = ({ letter, score, location }) => {
   }))
 
   const addLetter = useCallback(() => {
+    // Don't allow adding frozen tiles
+    if (isFrozen === true) {
+      return
+    }
     actor.send({ type: 'ADD_LETTER', location })
-  }, [actor, location])
+  }, [actor, location, isFrozen])
 
   const removeLetter = useCallback(() => {
-    if (tailOfChain[0].toString() === location.toString()) {
+    if (tailOfChain[0]?.toString() === location.toString()) {
       actor.send('REMOVE_LETTER')
     }
   }, [actor, location, tailOfChain])
 
+  // Determine tile style based on multipliers
+  let tileStyle = style.tile
+  if (isSelected != null) {
+    tileStyle = style.tileSelected
+  } else if (doubleWordMultiplier === true) {
+    tileStyle = style.tileDoubleWord
+  } else if (tripleLetterMultiplier === true) {
+    tileStyle = style.tileTripleLetter
+  } else if (doubleLetterMultiplier === true) {
+    tileStyle = style.tileDoubleLetter
+  } else if (isFrozen === true) {
+    tileStyle = style.tileFrozen
+  }
+
   return (
     <div
-      className={(isSelected != null) ? style.tileSelected : style.tile}
+      className={tileStyle}
       {
         ...(
           !isChaining
@@ -46,6 +73,11 @@ const Tile: FC<TypeProps> = ({ letter, score, location }) => {
       }
     >
       {letter}
+      {hasGem === true && <div className={style.tileGem}>💎</div>}
+      {doubleLetterMultiplier === true && <div className={style.tileMultiplier}>DL</div>}
+      {tripleLetterMultiplier === true && <div className={style.tileMultiplier}>TL</div>}
+      {doubleWordMultiplier === true && <div className={style.tileMultiplier}>2x</div>}
+      {isFrozen === true && <div className={style.tileFrozenIcon}>❄️</div>}
       <div className={style.tileScore}>
         {score}
       </div>

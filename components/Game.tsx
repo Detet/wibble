@@ -72,9 +72,10 @@ const Game: FC = () => {
             </button>
             )
           : (
-            <span>
-              SCORE: {state.context.totalScore}
-            </span>
+            <div>
+              <div>SCORE: {state.context.totalScore}</div>
+              <div>GEMS: {state.context.gems} / 10</div>
+            </div>
             )
       }
     </main>

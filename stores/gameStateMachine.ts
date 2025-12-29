@@ -2,7 +2,8 @@ import { createContext } from 'react'
 import { createMachine, assign, ActorRefFrom } from 'xstate'
 
 import { generateTitleBoard, generateRandomBoard, randomLetter } from '@/utils/board'
-import { GameData } from '@/types'
+import { isValidWord } from '@/utils/dictionary'
+import { GameData, TileData } from '@/types'
 
 const addLetterActions = [
   'addLetter',
@@ -44,7 +45,7 @@ export const gameStateMachine = createMachine(
                 ]
               },
               STOP_CHAINING: [
-                { target: 'cleanup', cond: 'chainMeetsMinimumLength' },
+                { target: 'cleanup', cond: 'isValidWordSubmission' },
                 { target: 'idle' }
               ]
             }
@@ -53,6 +54,7 @@ export const gameStateMachine = createMachine(
             always: {
               target: 'idle',
               actions: [
+                'collectGems',
                 'updateTotalScore',
                 'replaceUsedLetters'
               ]
@@ -66,6 +68,7 @@ export const gameStateMachine = createMachine(
       currentWord: '',
       currentScore: 0,
       totalScore: 0,
+      gems: 0,
       board: []
     },
     /* eslint-disable @typescript-eslint/consistent-type-assertions */
@@ -101,10 +104,58 @@ export const gameStateMachine = createMachine(
           (word, [col, row]) => word + context.board[row][col].letter,
           ''
         ),
-        currentScore: (context) => context.currentChain.reduce(
-          (score, [col, row]) => score + context.board[row][col].score,
-          0
-        )
+        currentScore: (context) => {
+          let score = 0
+          let wordMultiplier = 1
+          let hasDoubleWord = false
+
+          // Calculate score with letter multipliers
+          context.currentChain.forEach(([col, row]) => {
+            const tile = context.board[row][col]
+            let letterScore = tile.score
+
+            // Apply letter multipliers
+            if (tile.doubleLetterMultiplier === true) {
+              letterScore *= 2
+            } else if (tile.tripleLetterMultiplier === true) {
+              letterScore *= 3
+            }
+
+            // Check for word multiplier
+            if (tile.doubleWordMultiplier === true) {
+              hasDoubleWord = true
+            }
+
+            score += letterScore
+          })
+
+          // Apply word multiplier if any tile had it
+          if (hasDoubleWord) {
+            score *= 2
+          }
+
+          // Add long word bonus (6+ letters)
+          if (context.currentChain.length >= 6) {
+            score += 10
+          }
+
+          return score
+        }
+      }),
+      collectGems: assign({
+        gems: (context) => {
+          // Count gems in the current chain
+          let gemsEarned = 0
+          context.currentChain.forEach(([col, row]) => {
+            const tile = context.board[row][col]
+            if (tile.hasGem === true) {
+              gemsEarned++
+            }
+          })
+
+          // Cap gems at 10
+          return Math.min(context.gems + gemsEarned, 10)
+        }
       }),
       updateTotalScore: assign({
         totalScore: (context) => context.totalScore + context.currentScore
@@ -127,7 +178,28 @@ export const gameStateMachine = createMachine(
       })
     },
     guards: {
-      chainMeetsMinimumLength: (context) => context.currentChain.length > 1
+      isValidWordSubmission: (context) => {
+        // Must have at least 2 letters
+        if (context.currentChain.length < 2) {
+          return false
+        }
+
+        // Check if word is in dictionary
+        if (!isValidWord(context.currentWord)) {
+          return false
+        }
+
+        // Check if any frozen tiles were used
+        const usesFrozenTile = context.currentChain.some(([col, row]) => {
+          return context.board[row][col].isFrozen === true
+        })
+
+        if (usesFrozenTile) {
+          return false
+        }
+
+        return true
+      }
     }
   }
 )
