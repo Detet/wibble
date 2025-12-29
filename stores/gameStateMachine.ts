@@ -110,6 +110,7 @@ export const gameStateMachine = createMachine(
         turnDuration: 60 // 1 minute default
       },
       currentRound: 1,
+      currentPlayerIndex: 0,
       turnTimeRemaining: 60,
       currentChain: [],
       currentWord: '',
@@ -117,7 +118,9 @@ export const gameStateMachine = createMachine(
       totalScore: 0,
       roundScores: [],
       gems: 0,
-      board: []
+      board: [],
+      players: [],
+      localPlayerId: ''
     },
     /* eslint-disable @typescript-eslint/consistent-type-assertions */
     schema: {
