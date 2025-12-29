@@ -12,6 +12,7 @@ const addLetterActions = [
 
 export const gameStateMachine = createMachine(
   {
+    id: 'gameStateMachine',
     initial: 'title',
     states: {
       title: {
@@ -38,6 +39,12 @@ export const gameStateMachine = createMachine(
               USE_WILDCARD: {
                 cond: 'hasEnoughGemsForWildcard',
                 actions: ['setWildcardLetter', 'spendGemsForWildcard']
+              },
+              TIMER_TICK: {
+                actions: 'decrementTimer'
+              },
+              END_TURN: {
+                target: 'turnEnding'
               }
             }
           },
@@ -55,7 +62,13 @@ export const gameStateMachine = createMachine(
               STOP_CHAINING: [
                 { target: 'cleanup', cond: 'isValidWordSubmission' },
                 { target: 'idle' }
-              ]
+              ],
+              TIMER_TICK: {
+                actions: 'decrementTimer'
+              },
+              END_TURN: {
+                target: 'turnEnding'
+              }
             }
           },
           cleanup: {
@@ -64,18 +77,45 @@ export const gameStateMachine = createMachine(
               actions: [
                 'collectGems',
                 'updateTotalScore',
-                'replaceUsedLetters'
+                'replaceUsedLetters',
+                'saveRoundScore'
+              ]
+            }
+          },
+          turnEnding: {
+            entry: 'clearCurrentWord',
+            always: [
+              { target: 'roundEnding', cond: 'isLastRound' },
+              { target: 'idle', actions: 'startNextTurn' }
+            ]
+          },
+          roundEnding: {
+            on: {
+              START_NEXT_ROUND: [
+                { target: '#gameStateMachine.gameOver', cond: 'isGameOver' },
+                { target: 'idle', actions: 'setupNextRound' }
               ]
             }
           }
         }
+      },
+      gameOver: {
+        type: 'final'
       }
     },
     context: {
+      config: {
+        totalRounds: 5,
+        turnsPerPlayer: 1,
+        turnDuration: 60 // 1 minute default
+      },
+      currentRound: 1,
+      turnTimeRemaining: 60,
       currentChain: [],
       currentWord: '',
       currentScore: 0,
       totalScore: 0,
+      roundScores: [],
       gems: 0,
       board: []
     },
@@ -89,6 +129,9 @@ export const gameStateMachine = createMachine(
         | { type: 'STOP_CHAINING' }
         | { type: 'USE_SHUFFLE' }
         | { type: 'USE_WILDCARD', location: [number, number], letter: string }
+        | { type: 'TIMER_TICK' }
+        | { type: 'END_TURN' }
+        | { type: 'START_NEXT_ROUND' }
     }
     /* eslint-enable @typescript-eslint/consistent-type-assertions */
   },
@@ -240,6 +283,26 @@ export const gameStateMachine = createMachine(
       }),
       spendGemsForWildcard: assign({
         gems: (context) => context.gems - 3
+      }),
+      decrementTimer: assign({
+        turnTimeRemaining: (context) => Math.max(0, context.turnTimeRemaining - 1)
+      }),
+      saveRoundScore: assign({
+        roundScores: (context) => {
+          // Only save if we haven't already saved this round
+          if (context.roundScores.length < context.currentRound) {
+            return [...context.roundScores, context.totalScore]
+          }
+          return context.roundScores
+        }
+      }),
+      startNextTurn: assign({
+        turnTimeRemaining: (context) => context.config.turnDuration
+      }),
+      setupNextRound: assign({
+        currentRound: (context) => context.currentRound + 1,
+        turnTimeRemaining: (context) => context.config.turnDuration,
+        board: (_) => generateRandomBoard()
       })
     },
     guards: {
@@ -270,6 +333,12 @@ export const gameStateMachine = createMachine(
       },
       hasEnoughGemsForWildcard: (context) => {
         return context.gems >= 3
+      },
+      isLastRound: (context) => {
+        return context.currentRound >= context.config.totalRounds
+      },
+      isGameOver: (context) => {
+        return context.currentRound >= context.config.totalRounds
       }
     }
   }
