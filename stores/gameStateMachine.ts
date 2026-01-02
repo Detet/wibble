@@ -6,24 +6,16 @@ import { isValidWord } from '@/utils/dictionary'
 import { GameData, TileData } from '@/types'
 
 /**
- * Check if two tiles are adjacent on a toroidal (wrapping) 5x5 board
+ * Check if two tiles are adjacent (no wrapping)
  */
-const isAdjacentWithWrapping = (pos1: [number, number], pos2: [number, number]): boolean => {
+const isAdjacent = (pos1: [number, number], pos2: [number, number]): boolean => {
   const [x1, y1] = pos1
   const [x2, y2] = pos2
-  const boardSize = 5
 
-  // Calculate horizontal and vertical distances with wrapping
-  const dx = Math.min(
-    Math.abs(x2 - x1),
-    boardSize - Math.abs(x2 - x1)
-  )
-  const dy = Math.min(
-    Math.abs(y2 - y1),
-    boardSize - Math.abs(y2 - y1)
-  )
+  const dx = Math.abs(x2 - x1)
+  const dy = Math.abs(y2 - y1)
 
-  // Adjacent if within 1 step horizontally, vertically, or diagonally (including wrapping)
+  // Adjacent if within 1 step horizontally, vertically, or diagonally
   return dx <= 1 && dy <= 1 && (dx + dy) > 0
 }
 
@@ -509,9 +501,9 @@ export const gameStateMachine = createMachine(
           return true
         }
 
-        // Check if adjacent to last tile (with wrapping)
+        // Check if adjacent to last tile
         const lastTile = context.currentChain[context.currentChain.length - 1]
-        return isAdjacentWithWrapping(lastTile, location)
+        return isAdjacent(lastTile, location)
       },
       hasEnoughGemsForShuffle: (context) => {
         return context.gems >= 1
