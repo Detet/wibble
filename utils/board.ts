@@ -169,22 +169,6 @@ export const generateRandomBoard = (): TileData[][] => {
     }
   }
 
-  // Add 0-2 random frozen tiles
-  const numFrozen = Math.floor(Math.random() * 3) // 0-2 frozen
-  const frozenPositions = new Set<string>()
-  while (frozenPositions.size < numFrozen) {
-    const row = Math.floor(Math.random() * 5)
-    const col = Math.floor(Math.random() * 5)
-    const key = `${row},${col}`
-    if (!frozenPositions.has(key) && !gemPositions.has(key)) {
-      frozenPositions.add(key)
-      board[row][col] = {
-        ...board[row][col],
-        isFrozen: true
-      }
-    }
-  }
-
   return board
 }
 
