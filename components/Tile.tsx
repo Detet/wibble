@@ -45,12 +45,8 @@ const Tile: FC<TypeProps> = ({
     if (!isMyTurn) {
       return
     }
-    // Don't allow adding frozen tiles
-    if (isFrozen === true) {
-      return
-    }
     actor.send({ type: 'ADD_LETTER', location })
-  }, [actor, location, isFrozen, isMyTurn])
+  }, [actor, location, isMyTurn])
 
   const removeLetter = useCallback(() => {
     // Don't allow interaction if not player's turn
@@ -72,8 +68,6 @@ const Tile: FC<TypeProps> = ({
     tileStyle = style.tileTripleLetter
   } else if (doubleLetterMultiplier === true) {
     tileStyle = style.tileDoubleLetter
-  } else if (isFrozen === true) {
-    tileStyle = style.tileFrozen
   }
 
   return (
@@ -94,7 +88,6 @@ const Tile: FC<TypeProps> = ({
       {doubleLetterMultiplier === true && <div className={style.tileMultiplier}>DL</div>}
       {tripleLetterMultiplier === true && <div className={style.tileMultiplier}>TL</div>}
       {doubleWordMultiplier === true && <div className={style.tileMultiplier}>2x</div>}
-      {isFrozen === true && <div className={style.tileFrozenIcon}>❄️</div>}
       <div className={style.tileScore}>
         {score}
       </div>
