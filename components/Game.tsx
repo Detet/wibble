@@ -219,7 +219,49 @@ const Game: FC = () => {
 
       {(isJoinLobby || isWaitingRoom) && (
         <div style={{ padding: '32px', maxWidth: '600px', margin: '0 auto' }}>
-          <h1>{isJoinLobby ? 'Joining...' : 'Waiting Room'}</h1>
+          <h1>{isJoinLobby ? 'Joining Game...' : 'Waiting Room'}</h1>
+
+          {isJoinLobby && (
+            <div style={{ marginTop: '24px', textAlign: 'center' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
+              <div style={{ fontSize: '18px', color: '#666', marginBottom: '8px' }}>
+                {connectionStatus === 'connecting' ? 'Connecting to host...' : 'Initializing...'}
+              </div>
+              <div style={{ fontSize: '14px', color: '#888', fontFamily: 'monospace' }}>
+                Room: {context.roomCode}
+              </div>
+              {connectionStatus === 'error' && error != null && (
+                <div style={{
+                  marginTop: '24px',
+                  padding: '20px',
+                  backgroundColor: '#fee',
+                  border: '2px solid #fcc',
+                  borderRadius: '8px',
+                  color: '#c00',
+                  textAlign: 'left'
+                }}>
+                  <strong style={{ fontSize: '18px' }}>❌ Connection Failed</strong>
+                  <div style={{ marginTop: '8px', fontSize: '14px' }}>
+                    {error}
+                  </div>
+                  <div style={{ marginTop: '16px', fontSize: '14px', color: '#666' }}>
+                    <strong>Troubleshooting:</strong>
+                    <ul style={{ marginTop: '8px', paddingLeft: '20px' }}>
+                      <li>Make sure the host created the game first</li>
+                      <li>Check that the room code is correct</li>
+                      <li>Try refreshing and joining again</li>
+                    </ul>
+                  </div>
+                  <button
+                    style={{ marginTop: '16px', padding: '12px 24px', cursor: 'pointer' }}
+                    onClick={() => window.location.reload()}
+                  >
+                    Back to Menu
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {isWaitingRoom && (
             <>
