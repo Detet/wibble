@@ -348,10 +348,54 @@ export const gameStateMachine = createMachine(
       }),
       replaceUsedLetters: assign({
         board: (context) => {
-          const board = context.board
+          const board = context.board.map(row => row.map(tile => ({ ...tile })))
 
+          // First, replace used letters with new random ones
           for (const [col, row] of context.currentChain) {
-            board[row][col] = randomLetter()
+            const newTile = randomLetter()
+            board[row][col] = {
+              ...newTile,
+              // Preserve multipliers and modifiers
+              doubleLetterMultiplier: board[row][col].doubleLetterMultiplier,
+              tripleLetterMultiplier: board[row][col].tripleLetterMultiplier,
+              doubleWordMultiplier: board[row][col].doubleWordMultiplier,
+              hasGem: board[row][col].hasGem,
+              isFrozen: board[row][col].isFrozen
+            }
+          }
+
+          // Then shuffle all letters while keeping multipliers/modifiers in place
+          // Collect all letters (just the letter and score)
+          const letters: Array<{ letter: string, score: number }> = []
+          for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 5; c++) {
+              letters.push({
+                letter: board[r][c].letter,
+                score: board[r][c].score
+              })
+            }
+          }
+
+          // Fisher-Yates shuffle
+          for (let i = letters.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [letters[i], letters[j]] = [letters[j], letters[i]]
+          }
+
+          // Put shuffled letters back, preserving multipliers
+          let idx = 0
+          for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 5; c++) {
+              board[r][c] = {
+                ...letters[idx++],
+                // Preserve multipliers and modifiers
+                doubleLetterMultiplier: board[r][c].doubleLetterMultiplier,
+                tripleLetterMultiplier: board[r][c].tripleLetterMultiplier,
+                doubleWordMultiplier: board[r][c].doubleWordMultiplier,
+                hasGem: board[r][c].hasGem,
+                isFrozen: board[r][c].isFrozen
+              }
+            }
           }
 
           return board
