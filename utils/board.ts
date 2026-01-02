@@ -91,14 +91,97 @@ export const getLetterByProbability = (value: number): TileData => {
 
 export const randomLetter = (): TileData => getLetterByProbability(Math.random())
 
+/**
+ * Fixed positions for Double Letter multipliers (like Scrabble)
+ * Pattern creates a symmetric layout
+ */
+const DOUBLE_LETTER_POSITIONS: Array<[number, number]> = [
+  [0, 3], [3, 0], [4, 1], [1, 4],
+  [2, 2] // center
+]
+
+/**
+ * Fixed positions for Triple Letter multipliers
+ */
+const TRIPLE_LETTER_POSITIONS: Array<[number, number]> = [
+  [1, 1], [3, 3], [1, 3], [3, 1]
+]
+
+/**
+ * Generates a random board with multipliers and modifiers
+ */
 export const generateRandomBoard = (): TileData[][] => {
   const board = [] as TileData[][]
 
+  // Generate base board with letters
   for (let r = 0; r < 5; r++) {
     board[r] = [] as TileData[]
-
     for (let c = 0; c < 5; c++) {
       board[r][c] = randomLetter()
+    }
+  }
+
+  // Add 1 random Double Letter multiplier
+  const dlRow = Math.floor(Math.random() * 5)
+  const dlCol = Math.floor(Math.random() * 5)
+  board[dlRow][dlCol] = {
+    ...board[dlRow][dlCol],
+    doubleLetterMultiplier: true
+  }
+
+  // Add 1 random Triple Letter multiplier (different position than DL)
+  let tlRow, tlCol
+  do {
+    tlRow = Math.floor(Math.random() * 5)
+    tlCol = Math.floor(Math.random() * 5)
+  } while (tlRow === dlRow && tlCol === dlCol)
+
+  board[tlRow][tlCol] = {
+    ...board[tlRow][tlCol],
+    tripleLetterMultiplier: true
+  }
+
+  // Add 1 random Double Word multiplier (different from DL and TL)
+  let dwRow, dwCol
+  do {
+    dwRow = Math.floor(Math.random() * 5)
+    dwCol = Math.floor(Math.random() * 5)
+  } while ((dwRow === dlRow && dwCol === dlCol) || (dwRow === tlRow && dwCol === tlCol))
+
+  board[dwRow][dwCol] = {
+    ...board[dwRow][dwCol],
+    doubleWordMultiplier: true
+  }
+
+  // Add 3-5 random gem tiles
+  const numGems = Math.floor(Math.random() * 3) + 3 // 3-5 gems
+  const gemPositions = new Set<string>()
+  while (gemPositions.size < numGems) {
+    const row = Math.floor(Math.random() * 5)
+    const col = Math.floor(Math.random() * 5)
+    const key = `${row},${col}`
+    if (!gemPositions.has(key)) {
+      gemPositions.add(key)
+      board[row][col] = {
+        ...board[row][col],
+        hasGem: true
+      }
+    }
+  }
+
+  // Add 0-2 random frozen tiles
+  const numFrozen = Math.floor(Math.random() * 3) // 0-2 frozen
+  const frozenPositions = new Set<string>()
+  while (frozenPositions.size < numFrozen) {
+    const row = Math.floor(Math.random() * 5)
+    const col = Math.floor(Math.random() * 5)
+    const key = `${row},${col}`
+    if (!frozenPositions.has(key) && !gemPositions.has(key)) {
+      frozenPositions.add(key)
+      board[row][col] = {
+        ...board[row][col],
+        isFrozen: true
+      }
     }
   }
 

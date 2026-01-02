@@ -10,31 +10,75 @@ interface TypeProps extends TileData {
   location: [number, number]
 }
 
-const Tile: FC<TypeProps> = ({ letter, score, location }) => {
+const Tile: FC<TypeProps> = ({
+  letter,
+  score,
+  location,
+  doubleLetterMultiplier,
+  tripleLetterMultiplier,
+  doubleWordMultiplier,
+  hasGem,
+  isFrozen
+}) => {
   const actor = useContext(GameStateMachineContext)
   const {
     isChaining,
     tailOfChain,
-    isSelected
-  } = useSelector(actor, (state) => ({
-    isChaining: state.matches('play.chaining'),
-    tailOfChain: state.context.currentChain.slice(-2),
-    isSelected: state.context.currentChain.find((l) => l.toString() === location.toString())
-  }))
+    isSelected,
+    isMyTurn
+  } = useSelector(actor, (state) => {
+    // In solo mode (no multiplayer), it's always the player's turn
+    const isSoloMode = state.context.players.length <= 1
+    const currentPlayer = state.context.players[state.context.currentPlayerIndex]
+    const isLocalPlayerTurn = currentPlayer?.id === state.context.localPlayerId
+
+    return {
+      isChaining: state.matches('play.chaining'),
+      tailOfChain: state.context.currentChain.slice(-2),
+      isSelected: state.context.currentChain.find((l) => l.toString() === location.toString()),
+      isMyTurn: isSoloMode || isLocalPlayerTurn
+    }
+  })
 
   const addLetter = useCallback(() => {
+    // Don't allow interaction if not player's turn
+    if (!isMyTurn) {
+      return
+    }
+    // Don't allow adding frozen tiles
+    if (isFrozen === true) {
+      return
+    }
     actor.send({ type: 'ADD_LETTER', location })
-  }, [actor, location])
+  }, [actor, location, isFrozen, isMyTurn])
 
   const removeLetter = useCallback(() => {
-    if (tailOfChain[0].toString() === location.toString()) {
+    // Don't allow interaction if not player's turn
+    if (!isMyTurn) {
+      return
+    }
+    if (tailOfChain[0]?.toString() === location.toString()) {
       actor.send('REMOVE_LETTER')
     }
-  }, [actor, location, tailOfChain])
+  }, [actor, location, tailOfChain, isMyTurn])
+
+  // Determine tile style based on multipliers
+  let tileStyle = style.tile
+  if (isSelected != null) {
+    tileStyle = style.tileSelected
+  } else if (doubleWordMultiplier === true) {
+    tileStyle = style.tileDoubleWord
+  } else if (tripleLetterMultiplier === true) {
+    tileStyle = style.tileTripleLetter
+  } else if (doubleLetterMultiplier === true) {
+    tileStyle = style.tileDoubleLetter
+  } else if (isFrozen === true) {
+    tileStyle = style.tileFrozen
+  }
 
   return (
     <div
-      className={(isSelected != null) ? style.tileSelected : style.tile}
+      className={tileStyle}
       {
         ...(
           !isChaining
@@ -46,6 +90,11 @@ const Tile: FC<TypeProps> = ({ letter, score, location }) => {
       }
     >
       {letter}
+      {hasGem === true && <div className={style.tileGem}>💎</div>}
+      {doubleLetterMultiplier === true && <div className={style.tileMultiplier}>DL</div>}
+      {tripleLetterMultiplier === true && <div className={style.tileMultiplier}>TL</div>}
+      {doubleWordMultiplier === true && <div className={style.tileMultiplier}>2x</div>}
+      {isFrozen === true && <div className={style.tileFrozenIcon}>❄️</div>}
       <div className={style.tileScore}>
         {score}
       </div>

@@ -14,7 +14,9 @@
   "license": "ISC",
   "dependencies": {
     "@xstate/react": "^3.2.1",
+    "nanoid": "^3.3.11",
     "next": "^13.2.4",
+    "peerjs": "^1.5.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "xstate": "^4.37.1"
