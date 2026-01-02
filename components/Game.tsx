@@ -13,9 +13,29 @@ const Game: FC = () => {
   const [state] = useActor(actor)
   const { roomCode, connectionStatus, error } = useWebRTC(actor)
 
-  // Timer tick every second
+  // Auto-join if invite link is used
+  useEffect(() => {
+    if (typeof window !== 'undefined' && state.matches('mainMenu')) {
+      const urlParams = new URLSearchParams(window.location.search)
+      const joinCode = urlParams.get('join')
+      if (joinCode != null) {
+        const name = prompt('Enter your name:') || 'Player'
+        actor.send({ type: 'JOIN_GAME', roomCode: joinCode, playerName: name })
+        // Clear URL parameter
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+    }
+  }, [state, actor])
+
+  // Timer tick every second (multiplayer only)
   useEffect(() => {
     if (!state.matches('play')) {
+      return
+    }
+
+    // Only run timer in multiplayer mode
+    const isSoloMode = state.context.players.length <= 1
+    if (isSoloMode) {
       return
     }
 
@@ -92,13 +112,34 @@ const Game: FC = () => {
         <div style={{ padding: '32px', maxWidth: '600px', margin: '0 auto' }}>
           <h1>Host Lobby</h1>
           <div style={{ marginTop: '24px', padding: '24px', border: '2px solid #000', borderRadius: '8px' }}>
-            <h2 style={{ fontSize: '48px', margin: '0' }}>ROOM CODE</h2>
-            <div style={{ fontSize: '64px', fontWeight: 'bold', letterSpacing: '8px' }}>
-              {roomCode ?? 'LOADING...'}
-            </div>
-            {connectionStatus === 'connecting' && (
-              <div style={{ fontSize: '16px', color: '#666', marginTop: '8px' }}>
-                Connecting...
+            <h2 style={{ fontSize: '24px', margin: '0 0 16px 0' }}>INVITE LINK</h2>
+            {roomCode != null ? (
+              <>
+                <div style={{
+                  fontSize: '18px',
+                  wordBreak: 'break-all',
+                  padding: '16px',
+                  backgroundColor: '#f0f0f0',
+                  borderRadius: '4px',
+                  marginBottom: '16px'
+                }}>
+                  {typeof window !== 'undefined' ? `${window.location.origin}/?join=${roomCode}` : 'Loading...'}
+                </div>
+                <button
+                  style={{ padding: '12px 24px', fontSize: '16px', width: '100%' }}
+                  onClick={() => {
+                    const inviteLink = `${window.location.origin}/?join=${roomCode}`
+                    navigator.clipboard.writeText(inviteLink)
+                      .then(() => alert('Invite link copied!'))
+                      .catch(() => alert('Failed to copy'))
+                  }}
+                >
+                  Copy Invite Link
+                </button>
+              </>
+            ) : (
+              <div style={{ fontSize: '18px', color: '#666' }}>
+                {connectionStatus === 'connecting' ? 'Generating link...' : 'LOADING...'}
               </div>
             )}
             {connectionStatus === 'error' && error != null && (
@@ -210,19 +251,21 @@ const Game: FC = () => {
           <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
             Round {context.currentRound} / {context.config.totalRounds}
           </div>
-          <div style={{
-            fontSize: '32px',
-            fontWeight: 'bold',
-            color: context.turnTimeRemaining <= 10 ? 'red' : 'black'
-          }}>
-            {formatTime(context.turnTimeRemaining)}
-          </div>
           {context.players.length > 1 && (
-            <div style={{ fontSize: '18px', marginTop: '8px' }}>
-              {context.players[context.currentPlayerIndex]?.id === context.localPlayerId
-                ? "Your Turn"
-                : `${context.players[context.currentPlayerIndex]?.name}'s Turn`}
-            </div>
+            <>
+              <div style={{
+                fontSize: '32px',
+                fontWeight: 'bold',
+                color: context.turnTimeRemaining <= 10 ? 'red' : 'black'
+              }}>
+                {formatTime(context.turnTimeRemaining)}
+              </div>
+              <div style={{ fontSize: '18px', marginTop: '8px' }}>
+                {context.players[context.currentPlayerIndex]?.id === context.localPlayerId
+                  ? "Your Turn"
+                  : `${context.players[context.currentPlayerIndex]?.name}'s Turn`}
+              </div>
+            </>
           )}
         </div>
       )}

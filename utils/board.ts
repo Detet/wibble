@@ -121,27 +121,35 @@ export const generateRandomBoard = (): TileData[][] => {
     }
   }
 
-  // Add Double Letter multipliers at fixed positions
-  DOUBLE_LETTER_POSITIONS.forEach(([row, col]) => {
-    board[row][col] = {
-      ...board[row][col],
-      doubleLetterMultiplier: true
-    }
-  })
+  // Add 1 random Double Letter multiplier
+  const dlRow = Math.floor(Math.random() * 5)
+  const dlCol = Math.floor(Math.random() * 5)
+  board[dlRow][dlCol] = {
+    ...board[dlRow][dlCol],
+    doubleLetterMultiplier: true
+  }
 
-  // Add Triple Letter multipliers at fixed positions
-  TRIPLE_LETTER_POSITIONS.forEach(([row, col]) => {
-    board[row][col] = {
-      ...board[row][col],
-      tripleLetterMultiplier: true
-    }
-  })
+  // Add 1 random Triple Letter multiplier (different position than DL)
+  let tlRow, tlCol
+  do {
+    tlRow = Math.floor(Math.random() * 5)
+    tlCol = Math.floor(Math.random() * 5)
+  } while (tlRow === dlRow && tlCol === dlCol)
 
-  // Add 1 random Double Word multiplier (moves each round)
-  const doubleWordRow = Math.floor(Math.random() * 5)
-  const doubleWordCol = Math.floor(Math.random() * 5)
-  board[doubleWordRow][doubleWordCol] = {
-    ...board[doubleWordRow][doubleWordCol],
+  board[tlRow][tlCol] = {
+    ...board[tlRow][tlCol],
+    tripleLetterMultiplier: true
+  }
+
+  // Add 1 random Double Word multiplier (different from DL and TL)
+  let dwRow, dwCol
+  do {
+    dwRow = Math.floor(Math.random() * 5)
+    dwCol = Math.floor(Math.random() * 5)
+  } while ((dwRow === dlRow && dwCol === dlCol) || (dwRow === tlRow && dwCol === tlCol))
+
+  board[dwRow][dwCol] = {
+    ...board[dwRow][dwCol],
     doubleWordMultiplier: true
   }
 
