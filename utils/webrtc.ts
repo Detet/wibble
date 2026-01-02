@@ -66,6 +66,11 @@ export class WebRTCManager {
     this.localPlayerId = `guest-${Date.now()}`
 
     return new Promise((resolve, reject) => {
+      // Add 10 second timeout
+      const timeout = setTimeout(() => {
+        reject(new Error('Connection timeout - could not reach host'))
+      }, 10000)
+
       this.peer = new Peer({
         config: {
           iceServers: [
@@ -76,7 +81,8 @@ export class WebRTCManager {
       })
 
       this.peer.on('open', (id) => {
-        console.log('Peer opened, connecting to room:', roomCode)
+        console.log('Guest peer opened with ID:', id)
+        console.log('Attempting to connect to host:', roomCode)
 
         // Connect to the host
         const conn = this.peer!.connect(roomCode, {
@@ -86,19 +92,22 @@ export class WebRTCManager {
         this.handleOutgoingConnection(conn)
 
         conn.on('open', () => {
-          console.log('Connected to host')
+          clearTimeout(timeout)
+          console.log('✅ Successfully connected to host!')
           resolve()
         })
 
         conn.on('error', (error) => {
-          console.error('Connection error:', error)
-          reject(error)
+          clearTimeout(timeout)
+          console.error('❌ Connection error:', error)
+          reject(new Error(`Failed to connect: ${error.type || 'Unknown error'}`))
         })
       })
 
       this.peer.on('error', (error) => {
-        console.error('PeerJS error:', error)
-        reject(error)
+        clearTimeout(timeout)
+        console.error('❌ PeerJS error:', error)
+        reject(new Error(`Peer error: ${error.type || error.message}`))
       })
 
       // Handle incoming connections from other guests (relayed through host)
