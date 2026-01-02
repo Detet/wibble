@@ -111,39 +111,62 @@ const Game: FC = () => {
       {isHostLobby && (
         <div style={{ padding: '32px', maxWidth: '600px', margin: '0 auto' }}>
           <h1>Host Lobby</h1>
-          <div style={{ marginTop: '24px', padding: '24px', border: '2px solid #000', borderRadius: '8px' }}>
-            <h2 style={{ fontSize: '24px', margin: '0 0 16px 0' }}>INVITE LINK</h2>
+
+          {/* Room Code Display */}
+          <div style={{ marginTop: '24px', padding: '24px', border: '2px solid #000', borderRadius: '8px', backgroundColor: '#f9f9f9' }}>
+            <h2 style={{ fontSize: '20px', margin: '0 0 12px 0', color: '#666' }}>ROOM CODE</h2>
+            <div style={{
+              fontSize: '48px',
+              fontWeight: 'bold',
+              letterSpacing: '8px',
+              textAlign: 'center',
+              padding: '16px',
+              backgroundColor: '#fff',
+              borderRadius: '8px',
+              border: '2px solid #ddd'
+            }}>
+              {roomCode ?? 'LOADING...'}
+            </div>
+            <div style={{ fontSize: '14px', color: '#888', marginTop: '8px', textAlign: 'center' }}>
+              Share this code with friends
+            </div>
+          </div>
+
+          {/* Invite Link Display */}
+          <div style={{ marginTop: '16px', padding: '24px', border: '2px solid #000', borderRadius: '8px' }}>
+            <h2 style={{ fontSize: '20px', margin: '0 0 12px 0' }}>INVITE LINK</h2>
             {roomCode != null ? (
               <>
                 <div style={{
-                  fontSize: '18px',
+                  fontSize: '16px',
                   wordBreak: 'break-all',
                   padding: '16px',
                   backgroundColor: '#f0f0f0',
                   borderRadius: '4px',
-                  marginBottom: '16px'
+                  marginBottom: '12px',
+                  fontFamily: 'monospace'
                 }}>
                   {typeof window !== 'undefined' ? `${window.location.origin}/?join=${roomCode}` : 'Loading...'}
                 </div>
                 <button
-                  style={{ padding: '12px 24px', fontSize: '16px', width: '100%' }}
+                  style={{ padding: '12px 24px', fontSize: '16px', width: '100%', cursor: 'pointer' }}
                   onClick={() => {
                     const inviteLink = `${window.location.origin}/?join=${roomCode}`
                     navigator.clipboard.writeText(inviteLink)
-                      .then(() => alert('Invite link copied!'))
+                      .then(() => alert('Invite link copied to clipboard!'))
                       .catch(() => alert('Failed to copy'))
                   }}
                 >
-                  Copy Invite Link
+                  📋 Copy Invite Link
                 </button>
               </>
             ) : (
-              <div style={{ fontSize: '18px', color: '#666' }}>
-                {connectionStatus === 'connecting' ? 'Generating link...' : 'LOADING...'}
+              <div style={{ fontSize: '16px', color: '#666' }}>
+                {connectionStatus === 'connecting' ? 'Generating...' : 'LOADING...'}
               </div>
             )}
             {connectionStatus === 'error' && error != null && (
-              <div style={{ fontSize: '16px', color: 'red', marginTop: '8px' }}>
+              <div style={{ fontSize: '14px', color: 'red', marginTop: '8px' }}>
                 Error: {error}
               </div>
             )}
