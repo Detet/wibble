@@ -39,6 +39,7 @@ export interface GameData {
   gems: number // Local player's gem count (max 10)
   localPlayerId: string // ID of the local player
   roomCode: string | null // WebRTC room code for multiplayer
+  message: string | null // Feedback message (invalid word, etc.)
 }
 
 export type WebRTCMessage =

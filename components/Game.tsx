@@ -234,6 +234,17 @@ const Game: FC = () => {
             : null
         }
       </div>
+      {context.message != null && (
+        <div style={{
+          color: 'red',
+          fontWeight: 'bold',
+          fontSize: '18px',
+          marginTop: '8px',
+          marginBottom: '8px'
+        }}>
+          {context.message}
+        </div>
+      )}
       <div
         style={{
           display: 'flex',

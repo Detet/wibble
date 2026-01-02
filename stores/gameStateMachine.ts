@@ -5,6 +5,28 @@ import { generateTitleBoard, generateRandomBoard, randomLetter, tiles } from '@/
 import { isValidWord } from '@/utils/dictionary'
 import { GameData, TileData } from '@/types'
 
+/**
+ * Check if two tiles are adjacent on a toroidal (wrapping) 5x5 board
+ */
+const isAdjacentWithWrapping = (pos1: [number, number], pos2: [number, number]): boolean => {
+  const [x1, y1] = pos1
+  const [x2, y2] = pos2
+  const boardSize = 5
+
+  // Calculate horizontal and vertical distances with wrapping
+  const dx = Math.min(
+    Math.abs(x2 - x1),
+    boardSize - Math.abs(x2 - x1)
+  )
+  const dy = Math.min(
+    Math.abs(y2 - y1),
+    boardSize - Math.abs(y2 - y1)
+  )
+
+  // Adjacent if within 1 step horizontally, vertically, or diagonally (including wrapping)
+  return dx <= 1 && dy <= 1 && (dx + dy) > 0
+}
+
 const addLetterActions = [
   'addLetter',
   'updateCurrentWord'
@@ -78,11 +100,12 @@ export const gameStateMachine = createMachine(
         initial: 'idle',
         states: {
           idle: {
-            entry: 'clearCurrentWord',
+            entry: ['clearCurrentWord', 'clearMessage'],
             on: {
               ADD_LETTER: {
                 target: 'chaining',
-                actions: addLetterActions
+                actions: addLetterActions,
+                cond: 'canAddTile'
               },
               USE_SHUFFLE: {
                 cond: 'hasEnoughGemsForShuffle',
@@ -103,7 +126,8 @@ export const gameStateMachine = createMachine(
           chaining: {
             on: {
               ADD_LETTER: {
-                actions: addLetterActions
+                actions: addLetterActions,
+                cond: 'canAddTile'
               },
               REMOVE_LETTER: {
                 actions: [
@@ -112,8 +136,8 @@ export const gameStateMachine = createMachine(
                 ]
               },
               STOP_CHAINING: [
-                { target: 'cleanup', cond: 'isValidWordSubmission' },
-                { target: 'idle' }
+                { target: 'cleanup', cond: 'isValidWordSubmission', actions: 'clearMessage' },
+                { target: 'idle', actions: 'setInvalidWordMessage' }
               ],
               TIMER_TICK: {
                 actions: 'decrementTimer'
@@ -173,7 +197,8 @@ export const gameStateMachine = createMachine(
       board: [],
       players: [],
       localPlayerId: '',
-      roomCode: null
+      roomCode: null,
+      message: null
     },
     /* eslint-disable @typescript-eslint/consistent-type-assertions */
     schema: {
@@ -345,6 +370,20 @@ export const gameStateMachine = createMachine(
         currentWord: '',
         currentScore: 0
       }),
+      clearMessage: assign({
+        message: null
+      }),
+      setInvalidWordMessage: assign({
+        message: (context) => {
+          if (context.currentChain.length < 2) {
+            return 'Word must be at least 2 letters'
+          }
+          if (context.currentChain.some(([col, row]) => context.board[row][col].isFrozen)) {
+            return 'Cannot use frozen tiles'
+          }
+          return `"${context.currentWord}" is not a valid word`
+        }
+      }),
       shuffleBoard: assign({
         board: (context) => {
           // Collect all letters from the board
@@ -443,6 +482,36 @@ export const gameStateMachine = createMachine(
         }
 
         return true
+      },
+      canAddTile: (context, event) => {
+        // Type guard to ensure event is ADD_LETTER
+        if (event.type !== 'ADD_LETTER') {
+          return false
+        }
+        const { location } = event
+
+        // Don't allow selecting the same tile twice
+        const alreadySelected = context.currentChain.some(
+          ([col, row]) => col === location[0] && row === location[1]
+        )
+        if (alreadySelected) {
+          return false
+        }
+
+        // Don't allow selecting frozen tiles
+        const [col, row] = location
+        if (context.board[row][col].isFrozen === true) {
+          return false
+        }
+
+        // First tile can always be added
+        if (context.currentChain.length === 0) {
+          return true
+        }
+
+        // Check if adjacent to last tile (with wrapping)
+        const lastTile = context.currentChain[context.currentChain.length - 1]
+        return isAdjacentWithWrapping(lastTile, location)
       },
       hasEnoughGemsForShuffle: (context) => {
         return context.gems >= 1
