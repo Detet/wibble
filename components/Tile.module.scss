@@ -6,6 +6,7 @@
   height: 64px;
   font-size: 32px;
   border: 1px solid black;
+  background-color: #f5f5f5;
 
   position: relative;
 
@@ -29,8 +30,60 @@
   font-size: 16px;
 }
 
+.tileMultiplier {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px;
+}
+
+.tileGem {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 14px;
+}
+
+.tileFrozenIcon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 40px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .tileSelected {
   @extend .tile;
+  background-color: #ffd700;
+}
 
-  background-color: yellow;
+.tileDoubleLetter {
+  @extend .tile;
+  background-color: #add8e6;
+  border: 2px solid #4682b4;
+}
+
+.tileTripleLetter {
+  @extend .tile;
+  background-color: #4169e1;
+  color: white;
+  border: 2px solid #191970;
+}
+
+.tileDoubleWord {
+  @extend .tile;
+  background-color: #ff69b4;
+  border: 3px solid #ff1493;
+}
+
+.tileFrozen {
+  @extend .tile;
+  background-color: #e0f7fa;
+  border: 2px solid #00bcd4;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
