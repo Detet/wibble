@@ -26,7 +26,8 @@ export class WebRTCManager {
    * Create a new room (host)
    */
   async createRoom(playerName: string): Promise<string> {
-    this.roomCode = nanoid()
+    // Generate uppercase-only room code for easier sharing
+    this.roomCode = nanoid(6).toUpperCase()
     this.isHost = true
     this.localPlayerId = `host-${Date.now()}`
 
