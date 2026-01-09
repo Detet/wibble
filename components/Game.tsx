@@ -18,9 +18,10 @@ const Game: FC = () => {
     if (typeof window !== 'undefined' && state.matches('mainMenu')) {
       const urlParams = new URLSearchParams(window.location.search)
       const joinCode = urlParams.get('join')
-      if (joinCode != null) {
+      if (joinCode != null && joinCode.trim() !== '') {
         const name = prompt('Enter your name:') || 'Player'
-        actor.send({ type: 'JOIN_GAME', roomCode: joinCode, playerName: name })
+        // Normalize room code: trim whitespace and convert to uppercase
+        actor.send({ type: 'JOIN_GAME', roomCode: joinCode.trim().toUpperCase(), playerName: name })
         // Clear URL parameter
         window.history.replaceState({}, '', window.location.pathname)
       }
@@ -91,8 +92,9 @@ const Game: FC = () => {
               onClick={() => {
                 const name = prompt('Enter your name:') || 'Player'
                 const code = prompt('Enter room code:')
-                if (code != null) {
-                  actor.send({ type: 'JOIN_GAME', roomCode: code.toUpperCase(), playerName: name })
+                if (code != null && code.trim() !== '') {
+                  // Normalize: trim whitespace and convert to uppercase for case-insensitive matching
+                  actor.send({ type: 'JOIN_GAME', roomCode: code.trim().toUpperCase(), playerName: name })
                 }
               }}
             >
