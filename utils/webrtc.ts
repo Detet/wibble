@@ -32,27 +32,55 @@ export class WebRTCManager {
     this.localPlayerId = `host-${Date.now()}`
 
     return new Promise((resolve, reject) => {
+      // Add timeout for peer initialization
+      const initTimeout = setTimeout(() => {
+        reject(new Error('Failed to connect to signaling server. Check your internet connection and firewall settings.'))
+      }, 15000) // 15 second timeout
+
+      console.log('🔄 Initializing host peer with ID:', this.roomCode)
+
       this.peer = new Peer(this.roomCode, {
+        host: '0.peerjs.com',
+        port: 443,
+        path: '/',
+        secure: true,
         config: {
           iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' }
           ]
-        }
+        },
+        debug: 2 // Enable debug logging
       })
 
       this.peer.on('open', (id) => {
-        console.log('Room created with code:', this.roomCode)
+        clearTimeout(initTimeout)
+        console.log('✅ HOST CONNECTED! Room code:', this.roomCode, 'Peer ID:', id)
         resolve(this.roomCode)
       })
 
       this.peer.on('error', (error) => {
-        console.error('PeerJS error:', error)
-        reject(error)
+        clearTimeout(initTimeout)
+        console.error('❌ PeerJS host error:', error)
+        const errorMsg = error.type === 'unavailable-id'
+          ? 'Room code already in use. Please try again.'
+          : error.type === 'network'
+          ? 'Network error. Check your internet connection.'
+          : error.type === 'server-error'
+          ? 'Server error. Please try again later.'
+          : `Connection failed: ${error.type || error.message}`
+        reject(new Error(errorMsg))
+      })
+
+      this.peer.on('disconnected', () => {
+        console.warn('⚠️ Peer disconnected from signaling server')
       })
 
       // Handle incoming connections (guests joining)
       this.peer.on('connection', (conn) => {
+        console.log('📥 Incoming connection from:', conn.peer)
         this.handleIncomingConnection(conn)
       })
     })
@@ -67,23 +95,32 @@ export class WebRTCManager {
     this.localPlayerId = `guest-${Date.now()}`
 
     return new Promise((resolve, reject) => {
-      // Add 10 second timeout
+      // Add 15 second timeout
       const timeout = setTimeout(() => {
-        reject(new Error('Connection timeout - could not reach host'))
-      }, 10000)
+        reject(new Error('Connection timeout - could not reach host. Make sure host created the game first.'))
+      }, 15000)
+
+      console.log('🔄 Initializing guest peer...')
 
       this.peer = new Peer({
+        host: '0.peerjs.com',
+        port: 443,
+        path: '/',
+        secure: true,
         config: {
           iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' }
           ]
-        }
+        },
+        debug: 2 // Enable debug logging
       })
 
       this.peer.on('open', (id) => {
-        console.log('Guest peer opened with ID:', id)
-        console.log('Attempting to connect to host:', roomCode)
+        console.log('✅ GUEST CONNECTED to signaling server! Peer ID:', id)
+        console.log('🔗 Attempting to connect to host room:', roomCode)
 
         // Connect to the host
         const conn = this.peer!.connect(roomCode, {
@@ -100,19 +137,27 @@ export class WebRTCManager {
 
         conn.on('error', (error) => {
           clearTimeout(timeout)
-          console.error('❌ Connection error:', error)
-          reject(new Error(`Failed to connect: ${error.type || 'Unknown error'}`))
+          console.error('❌ Connection to host failed:', error)
+          reject(new Error(`Failed to connect to host: ${error.type || 'Unknown error'}. Check room code.`))
         })
       })
 
       this.peer.on('error', (error) => {
         clearTimeout(timeout)
-        console.error('❌ PeerJS error:', error)
-        reject(new Error(`Peer error: ${error.type || error.message}`))
+        console.error('❌ PeerJS guest error:', error)
+        const errorMsg = error.type === 'peer-unavailable'
+          ? 'Host not found. Check the room code or make sure host created the game first.'
+          : error.type === 'network'
+          ? 'Network error. Check your internet connection.'
+          : error.type === 'server-error'
+          ? 'Server error. Please try again later.'
+          : `Connection failed: ${error.type || error.message}`
+        reject(new Error(errorMsg))
       })
 
       // Handle incoming connections from other guests (relayed through host)
       this.peer.on('connection', (conn) => {
+        console.log('📥 Incoming peer connection from:', conn.peer)
         this.handleIncomingConnection(conn)
       })
     })
