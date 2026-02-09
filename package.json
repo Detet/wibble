@@ -1,7 +1,7 @@
 {
   "name": "wibble",
-  "version": "0.0.0",
-  "description": "",
+  "version": "1.0.1",
+  "description": "Multiplayer word game - Spellcast clone",
   "scripts": {
     "dev": "next dev",
     "server": "tsx watch server/index.ts",

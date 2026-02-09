@@ -40,10 +40,6 @@ export class WebRTCManager {
       console.log('🔄 Initializing host peer with ID:', this.roomCode)
 
       this.peer = new Peer(this.roomCode, {
-        host: '0.peerjs.com',
-        port: 443,
-        path: '/',
-        secure: true,
         config: {
           iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -103,10 +99,6 @@ export class WebRTCManager {
       console.log('🔄 Initializing guest peer...')
 
       this.peer = new Peer({
-        host: '0.peerjs.com',
-        port: 443,
-        path: '/',
-        secure: true,
         config: {
           iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
